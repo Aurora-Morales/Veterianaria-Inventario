@@ -12,16 +12,34 @@
         .navbar-custom {
             background-color: #2c3e50;
         }
+        .btn-delete{
+            background-color: #c12121;
+            color: white;
+        }
+        .btn-delete:hover {
+            background-color: #af0e25;
+        }
+        .btn-edit {
+            background-color: #cc4f1e;
+            color: white;
+        }
+        .btn-edit:hover {
+            background-color: #c5420f;
+        }
     </style>
 </head>
 <body class="bg-light">
 
 <nav class="navbar navbar-dark navbar-custom mb-4">
     <div class="container">
-        <span class="navbar-brand">VetStock Pro</span>
+        <img th:src="@{/images/logoVeterinaria.jpeg}" alt="Mi logo" style="width: 50px; height: 50px;">
+        <span class="navbar-brand">Veterinaria Bloom</span>
         <form class="d-flex" method="get" th:action="@{/productos}">
-            <input class="form-control me-2" type="search" name="buscar" placeholder="Buscar por nombre...">
-            <button class="btn btn-outline-success" type="submit">Buscar</button>
+            <input class="form-control me-2" type="search" name="buscar" placeholder="Nombre...">
+            <input class="form-control me-2" type="number" name="buscarStock" placeholder="Stock máx..." style="width: 120px;">
+            <input class="form-control me-2" type="date" name="buscarFecha" placeholder="Fecha máx..." style="width: 150px;">
+            <button class="btn btn-outline-success" type="submit">Filtrar</button>
+            <a th:href="@{/productos}" class="btn btn-outline-secondary ms-2">Limpiar</a>
         </form>
     </div>
 </nav>
@@ -61,7 +79,7 @@
                         <small class="badge bg-secondary" th:text="${p.categoria}"></small>
                     </p>
                     <p class="card-text small text-muted mb-2">
-                        Prov: <span th:text="${p.nombreProveedor}"></span>
+                        Proveedor: <span th:text="${p.nombreProveedor}"></span>
                     </p>
 
                     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -76,6 +94,10 @@
                     </div>
 
                     <div class="d-grid gap-2">
+                        
+                    </div>
+
+                    <div class="d-grid gap-2">
                         <span class="badge"
                               th:classappend="${p.stock < 10} ? 'bg-danger' : 'bg-success'"
                               th:text="'Stock: ' + ${p.stock}">
@@ -84,6 +106,14 @@
                               th:classappend="${#lists.contains(alertaFecha, p)} ? 'bg-danger' : 'bg-primary'"
                               th:text="'Vence: ' + ${p.fechaCaducidad}">
                         </span>
+                    </div><br>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <a th:href="@{/productos/eliminar/{id}(id=${p.id})}"
+                           class="btn btn-delete"
+                           onclick="return confirm('¿Estás seguro de que deseas eliminar este producto?')">
+                            Eliminar
+                        </a>
+                        <a th:href="@{/productos/editar/{id}(id=${p.id})}" class="btn btn-edit">Editar</a>
                     </div>
                 </div>
             </div>
@@ -145,6 +175,58 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-success">Guardar Producto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true" th:classappend="${abrirModal} ? 'show d-block' : ''" th:style="${abrirModal} ? 'display:block; background: rgba(0,0,0,0.5);' : ''">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" th:if="${productoEdit != null}">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">Editar Producto: <span th:text="${productoEdit.nombre}"></span></h5>
+                <a th:href="@{/productos}" class="btn-close"></a>
+            </div>
+            <form th:action="@{/productos/actualizar}" method="post" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" name="id" th:value="${productoEdit.id}">
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" name="nombre" th:value="${productoEdit.nombre}" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Categoría</label>
+                            <input type="text" name="categoria" th:value="${productoEdit.categoria}" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Precio Venta</label>
+                            <input type="number" step="0.01" name="precioVenta" th:value="${productoEdit.precioVenta}" class="form-control" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Stock</label>
+                            <input type="number" name="stock" th:value="${productoEdit.stock}" class="form-control" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Fecha Caducidad</label>
+                            <input type="date" name="fechaCaducidad" th:value="${productoEdit.fechaCaducidad}" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Cambiar Imagen (Opcional)</label>
+                        <input type="file" name="archivoImagen" class="form-control" accept="image/*">
+                        <p class="small text-muted">Actual: <span th:text="${productoEdit.imagenNombre}"></span></p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a th:href="@{/productos}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-warning">Guardar Cambios</button>
                 </div>
             </form>
         </div>

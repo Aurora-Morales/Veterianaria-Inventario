@@ -12,6 +12,7 @@ public class VeterianariaInventarioApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(VeterianariaInventarioApplication.class, args);
+        System.out.println("Inicilizar pagina web con localhost/8080/productos");
     }
 
     //Prueba para visualizar datos
