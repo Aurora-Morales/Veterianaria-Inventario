@@ -1,18 +1,14 @@
 package com.uacm.veterinaria.inventario;
 
-import com.uacm.veterinaria.inventario.persistencia.entitys.Producto;
-import com.uacm.veterinaria.inventario.persistencia.repository.ProductoRepositorio;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
 
 @SpringBootApplication
 public class VeterianariaInventarioApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(VeterianariaInventarioApplication.class, args);
-        System.out.println("Inicilizar pagina web con localhost/8080/productos");
+        System.out.println("Inicilizar pagina web con localhost/8080/principal");
     }
 
     //Prueba para visualizar datos

@@ -39,7 +39,42 @@
             <input class="form-control me-2" type="number" name="buscarStock" placeholder="Stock máx..." style="width: 120px;">
             <input class="form-control me-2" type="date" name="buscarFecha" placeholder="Fecha máx..." style="width: 150px;">
             <button class="btn btn-outline-success" type="submit">Filtrar</button>
-            <a th:href="@{/productos}" class="btn btn-outline-secondary ms-2">Limpiar</a>
+            <button type="button" class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalPassword">
+                Cambiar Clave
+            </button>
+            <div class="modal fade" id="modalPassword" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title">Seguridad de la Cuenta</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <form th:action="@{/principal/cambiar-password}" method="post">
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Contraseña Actual</label>
+                                    <input type="password" name="passwordActual" class="form-control" required>
+                                </div>
+                                <hr>
+                                <div class="mb-3">
+                                    <label class="form-label">Nueva Contraseña</label>
+                                    <input type="password" name="passwordNueva" class="form-control" id="pass1" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Confirmar Nueva Contraseña</label>
+                                    <input type="password" name="passwordConfirmar" class="form-control" id="pass2" required>
+                                </div>
+
+                                <div id="msgError" class="text-danger small"></div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="submit" class="btn btn-primary">Actualizar Ahora</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <a th:href="@{/productos/logout}" class="btn btn-danger ms-2">Cerrar sesion</a>
         </form>
     </div>
 </nav>
@@ -50,6 +85,9 @@
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalProducto">
             + Agregar Nuevo Producto
         </button>
+        <a th:href="@{/productos/reporte}" class="btn btn-dark">
+            Generar Reporte Crítico
+        </a>
     </div>
 
     <div th:if="${not #lists.isEmpty(alertas)}" class="alert alert-warning shadow-sm">
