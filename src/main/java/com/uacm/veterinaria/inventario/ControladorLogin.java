@@ -3,6 +3,7 @@ package com.uacm.veterinaria.inventario;
 import com.uacm.veterinaria.inventario.persistencia.entitys.Usuario;
 import com.uacm.veterinaria.inventario.persistencia.repository.UsuarioRepositorio;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -13,11 +14,8 @@ import java.util.List;
 @RequestMapping("/principal")
 public class ControladorLogin {
 
-    private final UsuarioRepositorio usuarioRepositorio;
-
-    public ControladorLogin(UsuarioRepositorio usuarioRepositorio) {
-        this.usuarioRepositorio = usuarioRepositorio;
-    }
+    @Autowired
+    private UsuarioRepositorio usuarioRepositorio; // Cambia el nombre según tu interfaz real
 
     @GetMapping
     public String mostrarLogin() {
@@ -43,39 +41,36 @@ public class ControladorLogin {
     }
 
     @PostMapping("/cambiar-password")
-    public String cambiarPassword(@RequestParam String passwordActual, @RequestParam String passwordNueva,
-                                  @RequestParam String passwordConfirmar, HttpSession session,
-                                  RedirectAttributes flash) {
+    public String cambiarPassword(
+            @RequestParam("passwordActual") String passwordActual,
+            @RequestParam("passwordNueva") String passwordNueva,
+            HttpSession session,
+            RedirectAttributes flash) {
 
-        //¿Hay alguien logueado?
         Usuario usuarioSesion = (Usuario) session.getAttribute("usuarioLogueado");
-        if (usuarioSesion == null) return "redirect:/principal";
+        if (usuarioSesion == null) {
+            return "redirect:/principal";
+        }
 
-        //¿La contraseña actual es correcta?
-        // Buscamos en la BD para tener el dato más fresco
         Usuario usuarioBD = usuarioRepositorio.findById(usuarioSesion.getId()).orElse(null);
 
+        if (usuarioBD == null) {
+            flash.addFlashAttribute("errorPass", "El usuario no existe en el sistema.");
+            return "redirect:/productos";
+        }
+
         if (!usuarioBD.getContrasena().equals(passwordActual)) {
-            flash.addFlashAttribute("errorPass", "La contraseña actual no es correcta.");
+            flash.addFlashAttribute("errorPass", "La contraseña actual es incorrecta.");
             return "redirect:/productos";
         }
 
-        //¿Las nuevas contraseñas coinciden?
-        if (!passwordNueva.equals(passwordConfirmar)) {
-            flash.addFlashAttribute("errorPass", "Las nuevas contraseñas no coinciden.");
-            return "redirect:/productos";
-        }
-
-        //Guardar en la base de datos
         usuarioBD.setContrasena(passwordNueva);
-        try {
-            Usuario guardado = usuarioRepositorio.save(usuarioBD);
-            System.out.println("Contraseña actualizada para: " + guardado.getNombre());
-        } catch (Exception e) {
-            System.err.println("Error al guardar: " + e.getMessage());
-        }
+        usuarioRepositorio.save(usuarioBD);
+
+        session.setAttribute("usuarioLogueado", usuarioBD);
+
+        // Estas variables viajan de forma segura a /productos (index.html)
+        flash.addFlashAttribute("successPass", "¡Contraseña actualizada con éxito!");
         return "redirect:/productos";
     }
-
-
 }

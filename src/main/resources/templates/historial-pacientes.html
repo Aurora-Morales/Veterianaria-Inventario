@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Veterinaria Bloom - Historial Pacientes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .navbar-custom { background-color: #2c3e50; }
+    </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark navbar-custom mb-4">
+    <div class="container">
+        <span class="navbar-brand">🐾 Control de Pacientes y Consultas</span>
+        <a th:href="@{/productos}" class="btn btn-outline-light btn-sm">Volver al Panel de Inventario</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h2 class="mb-4">Historial Clínico de Pacientes</h2>
+
+    <div th:if="${successPacientes}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${successPacientes}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div th:if="${errorPacientes}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <span th:text="${errorPacientes}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-4">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalPaciente">
+                + Registrar Nueva Consulta
+            </button>
+        </div>
+        <div class="col-md-8">
+            <form method="get" th:action="@{/pacientes}" class="d-flex gap-2 justify-content-end">
+                <input type="text" name="buscar" th:value="${keyword}"
+                       class="form-control w-50"
+                       placeholder="Buscar por nombre, raza o fecha (AAAA-MM-DD)...">
+                <button type="submit" class="btn btn-success">🔍 Buscar</button>
+                <a th:href="@{/pacientes}" class="btn btn-secondary" th:if="${keyword}">Limpiar</a>
+            </form>
+        </div>
+    </div>
+
+    <div class="bg-white shadow rounded p-3">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+            <tr>
+                <th>Fecha</th>
+                <th>Paciente (Mascota)</th>
+                <th>Edad / Raza</th>
+                <th>Dueño / Teléfono</th>
+                <th>Descripción Consulta</th>
+                <th>Medicamento</th>
+                <th>Cajas</th>
+                <th>Acciones</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="hp : ${listaHistorial}">
+                <td th:text="${#temporals.format(hp.fechaConsulta, 'dd/MM/yyyy HH:mm')}"></td>
+                <td th:text="${hp.nombreMascota}" class="fw-bold text-primary"></td>
+                <td><span th:text="${hp.edad} + ' años'"></span> / <span th:text="${hp.raza}"></span></td>
+                <td><span th:text="${hp.nombreDueno}"></span><br><small class="text-muted" th:text="${hp.telefono}"></small></td>
+                <td th:text="${hp.descripcionConsulta}"></td>
+                <td th:text="${hp.medicamentoAsignado}" class="text-success fw-bold"></td>
+                <td th:text="${hp.cajasAsignadas}" class="text-center"></td>
+                <td>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn btn-warning btn-sm"
+                                data-bs-toggle="modal" data-bs-target="#modalEditarPaciente"
+                                th:data-id="${hp.id}"
+                                th:data-nombre="${hp.nombreMascota}"
+                                th:data-edad="${hp.edad}"
+                                th:data-raza="${hp.raza}"
+                                th:data-dueno="${hp.nombreDueno}"
+                                th:data-telefono="${hp.telefono}"
+                                th:data-desc="${hp.descripcionConsulta}"
+                                th:data-cajas="${hp.cajasAsignadas}"
+                                th:data-medicamento="${hp.medicamentoAsignado}" onclick="abrirModalEdicion(this)">
+                            Editar
+                        </button>
+                        <a th:href="@{/pacientes/eliminar/{id}(id=${hp.id})}" class="btn btn-danger btn-sm"
+                           onclick="return confirm('¿Seguro que deseas eliminar este historial? Las cajas del producto se devolverán al almacén.');">🗑️</a>
+                    </div>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(listaHistorial)}">
+                <td colspan="8" class="text-center text-muted">No hay consultas registradas en el historial.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPaciente" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Registrar Consulta Médica</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form th:action="@{/pacientes/guardar}" method="post">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Nombre de la Mascota</label>
+                            <input type="text" name="nombreMascota" class="form-control" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Edad (Anos)</label>
+                            <input type="number" name="edad" class="form-control" min="0" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Raza</label>
+                            <input type="text" name="raza" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Nombre del Dueño</label>
+                            <input type="text" name="nombreDueno" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Número Telefónico</label>
+                            <input type="tel" name="telefono" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Descripción de la Consulta</label>
+                        <textarea name="descripcionConsulta" class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="row p-3 bg-light rounded border">
+                        <h5 class="text-secondary mb-3">📦 Asignación de Medicamento (Descuento de Stock)</h5>
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label fw-bold">Seleccionar Producto</label>
+                            <select name="productoId" class="form-select">
+                                <option value="">-- Ninguno / Solo consulta --</option>
+                                <option th:each="prod : ${productosInventario}" th:value="${prod.id}" th:text="${prod.nombre} + ' (Stock actual: ' + ${prod.stock} + ')'"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Cantidad (Cajas)</label>
+                            <input type="number" name="cajasAsignadas" class="form-control" value="0" min="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Expediente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEditarPaciente" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"> Modificar Expediente de Paciente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form th:action="@{/pacientes/guardar}" method="post">
+                <input type="hidden" name="id" id="edit-id">
+
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Nombre de la Mascota</label>
+                            <input type="text" name="nombreMascota" id="edit-nombre" class="form-control" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Edad</label>
+                            <input type="number" name="edad" id="edit-edad" class="form-control" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Raza</label>
+                            <input type="text" name="raza" id="edit-raza" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Nombre del Dueño</label>
+                            <input type="text" name="nombreDueno" id="edit-dueno" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Número de Teléfono</label>
+                            <input type="tel" name="telefono" id="edit-telefono" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Descripción de la Consulta / Diagnóstico</label>
+                        <textarea name="descripcionConsulta" id="edit-desc" class="form-control" rows="3" required></textarea>
+                    </div>
+
+                    <div class="row p-3 bg-light rounded border">
+                        <h5 class="text-warning mb-2">Reasignar Medicamentos o Productos</h5>
+                        <p class="text-muted small mb-3">Aviso: Al guardar los cambios, las cajas previas regresarán al almacén e incrementarán el stock original para procesar el nuevo ajuste.</p>
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label fw-bold">Seleccionar Medicamento (Nuevo o Mismo)</label>
+                            <select name="productoId" id="edit-productoId" class="form-select">
+                                <option value="">-- Ninguno / Quitar Medicamento (Servicio) --</option>
+                                <option th:each="prod : ${productosInventario}" th:value="${prod.id}" th:text="${prod.nombre} + ' (En almacén: ' + ${prod.stock} + ')'"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Cantidad Nueva (Cajas)</label>
+                            <input type="number" name="cajasAsignadas" id="edit-cajas" class="form-control" min="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning fw-bold">Guardar Cambios y Ajustar Stock</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function abrirModalEdicion(button) {
+        // Cargar campos convencionales
+        document.getElementById('edit-id').value = button.getAttribute('data-id');
+        document.getElementById('edit-nombre').value = button.getAttribute('data-nombre');
+        document.getElementById('edit-edad').value = button.getAttribute('data-edad');
+        document.getElementById('edit-raza').value = button.getAttribute('data-raza');
+        document.getElementById('edit-dueno').value = button.getAttribute('data-dueno');
+        document.getElementById('edit-telefono').value = button.getAttribute('data-telefono');
+        document.getElementById('edit-desc').value = button.getAttribute('data-desc');
+        document.getElementById('edit-cajas').value = button.getAttribute('data-cajas');
+
+        // Obtener el nombre del medicamento desde el atributo data-medicamento
+        let medicamentoNombre = button.getAttribute('data-medicamento');
+        let select = document.getElementById('edit-productoId');
+
+        // Inicializar por defecto en limpio (Servicio / Ninguno)
+        select.value = "";
+
+        // Buscar coincidencia por texto en las opciones del inventario
+        if (medicamentoNombre && medicamentoNombre !== "Ninguno / Servicio") {
+            for (let i = 0; i < select.options.length; i++) {
+                // Comparamos si el texto de la opción contiene el nombre del medicamento
+                if (select.options[i].text.startsWith(medicamentoNombre)) {
+                    select.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+    }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,6 +1,8 @@
 package com.uacm.veterinaria.inventario;
 
+import com.uacm.veterinaria.inventario.persistencia.entitys.HistorialPedido;
 import com.uacm.veterinaria.inventario.persistencia.entitys.Producto;
+import com.uacm.veterinaria.inventario.persistencia.repository.HistorialPedidoRepositorio;
 import com.uacm.veterinaria.inventario.persistencia.repository.ProductoRepositorio;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.HttpSession;
@@ -15,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.ui.Model;
@@ -22,10 +25,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /*
-*   Metodo que controla la vista para administrar los productos
+*   Metodo que controla la vista para administrar los productos, enviar los pedidos y ver el historial
 *
 */
-
 @Controller
 @RequestMapping("/productos")
 public class ControladorPrincipal {
@@ -35,6 +37,8 @@ public class ControladorPrincipal {
     private ProductoRepositorio productoRepository;
     @Autowired
     private JavaMailSender mailSender;
+    @Autowired
+    private HistorialPedidoRepositorio historialRepository;
 
     // Ruta donde se guardaran las imagenes
     @Value("${ruta.imagenes}")
@@ -130,25 +134,26 @@ public class ControladorPrincipal {
         return "redirect:/productos";
     }
 
-    //Método para abrir la edición (Carga el producto y vuelve al index)
+    //Método para abrir la edición
     @GetMapping("/editar/{id}")
-    public String prepararEdicion(@PathVariable("id") Long id, Model model, @RequestParam(name = "buscar", required = false) String buscar,
-                                  HttpSession session) {
-        //Protección: Si no está logueado, fuera.
+    public String mostrarEditar(@PathVariable Long id, Model model, HttpSession session) {
+        // 1. Validar sesión de seguridad
         if (session.getAttribute("usuarioLogueado") == null) {
             return "redirect:/principal?error";
         }
 
-        //Reutilizar la lógica de listar para no perder la vista de fondo
-        listarProductos(buscar, null,null, model, session);
-
+        // 2. Buscar el producto que se desea modificar
         Producto producto = productoRepository.findById(id).orElse(null);
-        model.addAttribute("productoEdit", producto); // Producto que se va a editar
-        model.addAttribute("abrirModal", true); // Señal para abrir el modal automáticamente
+        if (producto == null) {
+            return "redirect:/productos"; // Si no existe, regresa al panel principal
+        }
 
-        return "index";
+        // 3. Pasar el objeto a la vista independiente
+        model.addAttribute("producto", producto);
+
+        // 4. RETORNA LA PLANTILLA SEPARADA: editar-producto.html
+        return "editar-producto";
     }
-
     //Método para procesar la actualización
     @PostMapping("/actualizar")
     public String actualizar(@ModelAttribute Producto producto, @RequestParam("archivoImagen") MultipartFile archivo) {
@@ -178,7 +183,7 @@ public class ControladorPrincipal {
     // Dentro de tu ControladorPrincipal
     @GetMapping("/reporte")
     public String generarReporte(Model model, HttpSession session) {
-        // 1. Validar sesión
+        //Validar sesión
         if (session.getAttribute("usuarioLogueado") == null) {
             return "redirect:/principal?error";
         }
@@ -186,12 +191,12 @@ public class ControladorPrincipal {
         LocalDate hoy = LocalDate.now();
         List<Producto> todos = productoRepository.findAll();
 
-        // 2. Filtrar productos faltantes o caducados
+        //Filtrar productos faltantes o caducados
         List<Producto> reporteLista = todos.stream()
                 .filter(p -> p.getStock() < 10 || (p.getFechaCaducidad() != null && p.getFechaCaducidad().isBefore(hoy)))
                 .collect(Collectors.toList());
 
-        // 3. Calcular el costo total de venta de estos productos
+        //Calcular el costo total de venta de estos productos
         double costoTotalVenta = reporteLista.stream()
                 .mapToDouble(p -> p.getPrecioVenta() * p.getStock())
                 .sum();
@@ -208,38 +213,64 @@ public class ControladorPrincipal {
         if (session.getAttribute("usuarioLogueado") == null) return "redirect:/principal";
 
         try {
-            // 1. Obtener datos (mismo filtro que el reporte)
             List<Producto> reporteLista = productoRepository.findAll().stream()
                     .filter(p -> p.getStock() < 10 || (p.getFechaCaducidad() != null && p.getFechaCaducidad().isBefore(LocalDate.now())))
                     .collect(Collectors.toList());
 
             double total = reporteLista.stream().mapToDouble(p -> p.getPrecioVenta() * p.getStock()).sum();
 
-            // 2. Construir el cuerpo del correo (Texto o HTML)
+            // Construir el cuerpo del correo (Texto o HTML)
             StringBuilder cuerpo = new StringBuilder();
             cuerpo.append("<h1>Pedido de Inventario Crítico</h1><table border='1'><tr><th>Producto</th><th>Proveedor</th><th>Stock</th><th>Subtotal</th></tr>");
 
             for (Producto p : reporteLista) {
                 cuerpo.append(String.format("<tr><td>%s</td><td>%s</td><td>%d</td><td>$%.2f</td></tr>",
-                        p.getNombre(), p.getNombreProveedor(), p.getStock(), (p.getPrecioVenta() * p.getStock())));
+                        p.getNombre(), p.getNombreProveedor(), 30-p.getStock(), (p.getPrecioVenta() * (30-p.getStock()))));
             }
             cuerpo.append("</table><h3>Total de Venta: $").append(total).append("</h3>");
 
-            // 3. Enviar correo
+            // Enviar correo
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
             helper.setTo(destino);
-            helper.setSubject("Pedido de Productos - Veterinaria Bloom");
+
+            // CORRECCIÓN 1: Math.abs garantiza que el número aleatorio de 3 dígitos nunca sea negativo
+            long numeroUnico = Math.abs(System.currentTimeMillis() % 1000);
+            helper.setSubject("Veterinaria Bloom - Pedido de Stock Crítico #" + numeroUnico);
+
             helper.setText(cuerpo.toString(), true); // 'true' indica que es HTML
 
             mailSender.send(message);
+
+            // GUARDAR EN HISTORIAL
+            HistorialPedido nuevoRegistro = new HistorialPedido(destino, LocalDateTime.now(), total);
+            historialRepository.save(nuevoRegistro);
+
+            // CORRECCIÓN 2: Se eliminó la línea duplicada y se deja solo una vez al final del éxito
             flash.addFlashAttribute("successMail", "Correo enviado exitosamente a " + destino);
 
         } catch (Exception e) {
+            // Imprime el error en la consola de Spring para que puedas investigarlo si falla
+            e.printStackTrace();
             flash.addFlashAttribute("errorMail", "Error al enviar: " + e.getMessage());
         }
 
         return "redirect:/productos/reporte";
     }
+
+    // 3. NUEVO MÉTODO: Endpoint para consultar el historial de la veterinaria
+    @GetMapping("/historial")
+    public String verHistorial(Model model, HttpSession session) {
+        if (session.getAttribute("usuarioLogueado") == null) {
+            return "redirect:/principal?error";
+        }
+
+        List<HistorialPedido> historial = historialRepository.findAllByOrderByFechaEnvioDesc();
+        model.addAttribute("historial", historial);
+
+        return "historial-pedidos"; // Nombre del nuevo HTML
+    }
+
 }
+
